@@ -2,3 +2,4 @@
 *.Rproj
 man
 .Rbuildignore
+.Rhistory
