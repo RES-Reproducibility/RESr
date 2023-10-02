@@ -31,7 +31,7 @@ read_list <- function(refresh = FALSE){
     if (refresh){
         x = data.table(
             googlesheets4::read_sheet(
-                sheet_url(),sheet = "List",skip = 1, range = "List!A2:AD1000000") %>%
+                sheet_url(),sheet = "List",skip = 1, range = "List!A2:AD2000") %>%
                 janitor::clean_names()
         )
         x = x[!is.na(ms)]
