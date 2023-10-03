@@ -112,11 +112,13 @@ read_replicators <- function(refresh = FALSE){
 
 #' compute quarterly stats for each replicator
 #'
+#' @export
 billing <- function(rate = 25, write = FALSE,refresh = FALSE){
     xectj = read_ectj(refresh = refresh)
     xej = read_list(refresh = refresh)
 
-    r0 = xectj[checker %in% read_replicators()$replicator][,
+    reps = read_replicators(refresh = refresh)
+    r0 = xectj[checker %in% reps$replicator][,
                                                            .(checker,date_assigned,
                                                              ms,
                                                              date_completed,
@@ -125,6 +127,7 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
                                                              decision,
                                                              journal = "EctJ"
                                                              )]
+    r0 = merge(r0, reps[,.(replicator,name,surname)] , by.x = "checker", by.y = "replicator")
 
 
     r1 = xej[checker %in% read_replicators()$replicator][,
@@ -137,6 +140,9 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
                                                           journal = "EJ"
                                                         )]
 
+    r1 = merge(r1, reps[,.(replicator,name,surname)] , by.x = "checker", by.y = "replicator")
+
+
     r = rbind(r0,r1)
     r[, assigned_quarter := zoo::as.yearqtr(date_assigned)]
 
@@ -144,41 +150,48 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
     # compute total payments by quarter
     qtr = r[, .(completed_jobs = sum(!is.na(date_completed)),
                 completed_papers = .SD[!is.na(date_completed), length(unique(ms))],
+                qtr_payment_euros = round(sum(hours_spent,na.rm = TRUE) * rate,2),
                 ongoing_jobs = sum(is.na(date_completed)),
                 Avg_hours = round(mean(hours_spent,na.rm = TRUE),2),
                 Tot_hours = round(sum(hours_spent,na.rm = TRUE),2),
-                qtr_payment_euros = round(sum(hours_spent,na.rm = TRUE) * rate,2),
                 Avg_days = round(mean(days_replic,na.rm = TRUE),2),
-                share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,assigned_quarter)]
+                share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,name, surname,assigned_quarter)][
+                    order(assigned_quarter)
+                ]
 
     # compute total payments by quarter for EJ
     qtr_ej = r[journal == "EJ", .(completed_jobs = sum(!is.na(date_completed)),
                 completed_papers = .SD[!is.na(date_completed), length(unique(ms))],
+                qtr_payment_euros = round(sum(hours_spent,na.rm = TRUE) * rate,2),
+
                 ongoing_jobs = sum(is.na(date_completed)),
                 Avg_hours = round(mean(hours_spent,na.rm = TRUE),2),
                 Tot_hours = round(sum(hours_spent,na.rm = TRUE),2),
-                qtr_payment_euros = round(sum(hours_spent,na.rm = TRUE) * rate,2),
                 Avg_days = round(mean(days_replic,na.rm = TRUE),2),
-                share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,assigned_quarter)]
+                share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,name, surname,assigned_quarter)][
+                    order(assigned_quarter)
+                ]
     # compute total payments by quarter for EctJ
     qtr_ectj = r[journal == "EctJ", .(completed_jobs = sum(!is.na(date_completed)),
                                   completed_papers = .SD[!is.na(date_completed), length(unique(ms))],
+                                  qtr_payment_euros = round(sum(hours_spent,na.rm = TRUE) * rate,2),
                                   ongoing_jobs = sum(is.na(date_completed)),
                                   Avg_hours = round(mean(hours_spent,na.rm = TRUE),2),
                                   Tot_hours = round(sum(hours_spent,na.rm = TRUE),2),
-                                  qtr_payment_euros = round(sum(hours_spent,na.rm = TRUE) * rate,2),
                                   Avg_days = round(mean(days_replic,na.rm = TRUE),2),
-                                  share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,assigned_quarter)]
+                                  share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,name, surname,assigned_quarter)][
+                                      order(assigned_quarter)
+                                  ]
 
     # compute stats all times
     ov =r[, .(completed_jobs = sum(!is.na(date_completed)),
               completed_papers = .SD[!is.na(date_completed), length(unique(ms))],
+              qtr_payment_euros = round(sum(hours_spent,na.rm = TRUE) * rate,2),
               ongoing_jobs = sum(is.na(date_completed)),
               Avg_hours = round(mean(hours_spent,na.rm = TRUE),2),
               Tot_hours = round(sum(hours_spent,na.rm = TRUE),2),
-              qtr_payment_euros = round(sum(hours_spent,na.rm = TRUE) * rate,2),
               Avg_days = round(mean(days_replic,na.rm = TRUE),2),
-              share_reject = round(mean(decision == "R",na.rm = TRUE) , 2) ), by = checker]
+              share_reject = round(mean(decision == "R",na.rm = TRUE) , 2) ), by = .(checker,name, surname)]
 
 
     if (write){
