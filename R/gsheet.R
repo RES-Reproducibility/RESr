@@ -42,6 +42,15 @@ read_list <- function(refresh = FALSE){
     x
 }
 
+nazerosum <- function(x,y){
+    if(is.na(x)){
+        x = 0
+    } else if (is.na(y)){
+        y = 0
+    }
+    x + y
+}
+
 clean_list <- function(refresh_sheet = FALSE){
 
     x = read_list(refresh = refresh_sheet)
@@ -49,6 +58,7 @@ clean_list <- function(refresh_sheet = FALSE){
     x[, completed_quarter := zoo::as.yearqtr(date_completed)]
     # create some variables
     x[, completed := status %in% c("AP","NT", "P", "p"), by = ms]
+    x[, hours_spent = nazerozum(hours_checker1, hours_checker2)]
     x[, hours_paper := sum(hours_spent), by = ms]
     x[, iterations_paper := max(round), by = ms]
 
@@ -118,27 +128,77 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
     xej = read_list(refresh = refresh)
 
     reps = read_replicators(refresh = refresh)
-    r0 = xectj[checker %in% reps$replicator][,
-                                                           .(checker,date_assigned,
+    # 1. filter out rows of my replicators
+    r0 = xectj[checker1 %in% reps$replicator][,.(checker1, checker2,date_assigned,
                                                              ms,
                                                              date_completed,
-                                                             hours_spent,
+                                                             hours_checker1,
+                                                             hours_checker2,
                                                              days_replic,
                                                              decision,
                                                              journal = "EctJ"
                                                              )]
+    # 2. get checker 2 hours as well
+    r02 = r0[!(is.na(checker2)),  list(checker = checker2,hours_spent = hours_checker2,date_assigned,
+                                       ms,
+                                       date_completed,
+                                       hours_checker1,
+                                       hours_checker2,
+                                       days_replic,
+                                       decision,
+                                       journal = "EctJ")]
+    setnames(r0, c("checker1","hours_checker1"), c("checker","hours_spent"))
+    r0[,c("checker2","hours_checker2") := NULL]
+
+    r0 = rbind(r0[,.(checker,hours_spent,date_assigned,
+                     ms,
+                     date_completed,
+                     days_replic,
+                     decision,
+                     journal)],
+               r02[,.(checker,hours_spent,date_assigned,
+                      ms,
+                      date_completed,
+                      days_replic,
+                      decision,
+                      journal)])
     r0 = merge(r0, reps[,.(replicator,name,surname)] , by.x = "checker", by.y = "replicator")
 
 
-    r1 = xej[checker %in% read_replicators()$replicator][,
-                                                        .(checker,date_assigned,
+    r1 = xej[checker1 %in% read_replicators()$replicator][,
+                                                        .(checker1, checker2,date_assigned,
                                                           ms,
                                                           date_completed,
-                                                          hours_spent,
+                                                          hours_checker1,
+                                                          hours_checker2,
                                                           days_replic,
                                                           decision,
                                                           journal = "EJ"
                                                         )]
+    # 2. get checker 2 hours as well
+    r12 = r1[!(is.na(checker2)),  list(checker = checker2,hours_spent = hours_checker2,date_assigned,
+                                       ms,
+                                       date_completed,
+                                       hours_checker1,
+                                       hours_checker2,
+                                       days_replic,
+                                       decision,
+                                       journal = "EJ")]
+    setnames(r1, c("checker1","hours_checker1"), c("checker","hours_spent"))
+    r1[,c("checker2","hours_checker2") := NULL]
+
+    r1 = rbind(r1[,.(checker,hours_spent,date_assigned,
+                     ms,
+                     date_completed,
+                     days_replic,
+                     decision,
+                     journal)],
+               r12[,.(checker,hours_spent,date_assigned,
+                      ms,
+                      date_completed,
+                      days_replic,
+                      decision,
+                      journal)])
 
     r1 = merge(r1, reps[,.(replicator,name,surname)] , by.x = "checker", by.y = "replicator")
 
