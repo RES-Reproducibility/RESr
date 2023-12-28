@@ -109,8 +109,8 @@ ej_randr <- function(firstname,lastname,address,ms,title,url,revision){
             <br>
 
 <ol>
-  <li>We found that you did not include all datasets in non-proprietary format. Please do.</li>
-  <li>The replicator identified some issues that prevent a clean run through your package. Please fix those, it's important to give any potential replicator a smooth experience, to keep barriers of entry low - the twitter data .csv files are missing.</li>
+  <li>Item 1</li>
+  <li>Item 2.</li>
 </ol>
 <br>
 Could you please address these issues and resubmit your final files (including your paper, appendix and replication package) like before? Please use this link:<br><br>
