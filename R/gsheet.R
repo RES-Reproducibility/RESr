@@ -30,8 +30,10 @@ read_ectj <- function(refresh = FALSE){
 read_list <- function(refresh = FALSE){
     if (refresh){
         x = data.table(
+            # TODO https://googlesheets4.tidyverse.org/reference/cell-specification.html
             googlesheets4::read_sheet(
-                sheet_url(),sheet = "List",skip = 1, range = "List!A2:AD2000") %>%
+                sheet_url(),sheet = "List",skip = 1, range = "List!A2:AC2000",
+                col_types = "ciccccccDDcccciccDDddccccDccD") %>%
                 janitor::clean_names()
         )
         x = x[!is.na(ms)]

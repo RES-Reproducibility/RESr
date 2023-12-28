@@ -1,4 +1,4 @@
-Package: Reporting
+Package: RESr
 Title: What the Package Does (One Line, Title Case)
 Version: 0.0.0.9000
 Authors@R: 
@@ -15,7 +15,11 @@ Imports:
     ggplot2,
     glue,
     googlesheets4,
+    httr2,
     janitor,
     lubridate,
     magrittr,
     tidyquant
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
