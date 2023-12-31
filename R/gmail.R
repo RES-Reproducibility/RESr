@@ -152,7 +152,7 @@ Florian",
 }
 
 
-ej_replicator_assignment <- function(firstname,address,authorlast,ms,revision){
+ej_replicator_assignment <- function(firstname,address,authorlast,ms,revision, back = FALSE){
 
     pnumber = ej_paper_number(authorlast,ms,revision)
     fullurl = ej_db_submitted_path(authorlast,ms,revision,full = TRUE)
@@ -162,6 +162,45 @@ ej_replicator_assignment <- function(firstname,address,authorlast,ms,revision){
 
     # shortened url to include in email.
     url = ej_db_submitted_path(authorlast,ms,revision)
+
+    if (back) {
+        message_body <- glue::glue(
+            "Hi {firstname},
+    <br>
+    <br>
+    The <i>{authorlast}</i> paper is back.
+    <br>
+    <br>
+    You can download the package from the EJ dropbox at
+    <br>
+    <br>
+    <code>{url}</code>
+    <br>
+    <br>
+
+    <b>Important:</b> For your report,
+    please follow the naming convention <code>{pnumber}.docx</code> (or <code>{pnumber}.qmd</code> - I need to be able to edit your report, so don't return a <code>.pdf</code> document.)
+    <br>
+    <br>
+
+    <b>Reminders:</b>
+    <br>
+
+
+    <ol>
+    <li><a href=\"https://docs.google.com/spreadsheets/d/1C5Wck6rw9KlnRfck5JyJ2T1Y5kbzoW1pqX-TPWPpOIE/edit#gid=0\">here</a> is the google sheet with all relevant access links.</li>
+    <li><a href=\"https://res-reproducibility.github.io/EJ-Workflow/\">here</a> is the current workflow (look at the Replicator section).</li>
+    <li>You should get the latest version of our reporting template by downloading the zip archive from <a href=\"https://github.com/RES-Reproducibility/EJ-report-template/releases/latest\">this repository</a>.
+    You will find different versions of the same document (docx, qmd, odt) - pick your favourite and return an editable version to me (not pdf!). Please return via email to this address. </li>
+    </ol>
+    <br>
+    <br>
+    Thanks,
+    <br>
+    Florian",
+            ej_signature()
+        )
+    } else {
 
     message_body <- glue::glue(
     "Hi {firstname},
@@ -190,14 +229,11 @@ ej_replicator_assignment <- function(firstname,address,authorlast,ms,revision){
     <ol>
     <li><a href=\"https://docs.google.com/spreadsheets/d/1C5Wck6rw9KlnRfck5JyJ2T1Y5kbzoW1pqX-TPWPpOIE/edit#gid=0\">here</a> is the google sheet with all relevant access links.</li>
     <li><a href=\"https://res-reproducibility.github.io/EJ-Workflow/\">here</a> is the current workflow (look at the Replicator section).</li>
+    <li>You should get the latest version of our reporting template by downloading the zip archive from <a href=\"https://github.com/RES-Reproducibility/EJ-report-template/releases/latest\">this repository</a>.
+    You will find different versions of the same document (docx, qmd, odt) - pick your favourite and return an editable version to me (not pdf!). Please return via email to this address. </li>
     </ol>
 
-    The EJ reporting template is here in the dropbox:
-    <br>
-    <code>EJ-3 Reproducibility reports/EJ-report-template_MAKE_A_COPY</code> - Please make a copy and place it outside of the dropbox on your computer!
-    Inside the folder you can edit different versions of this document, which you will then return via email to this address.
-    <br>
-    <br>
+ <br>
 
     Don't hesitate to reach out on slack for any ongoing issues with the replication. Let's talk about computational requirements there etc.
 
@@ -208,6 +244,7 @@ ej_replicator_assignment <- function(firstname,address,authorlast,ms,revision){
     Florian",
     ej_signature()
     )
+    }
 
 
     email <- gmailr::gm_mime() |>
