@@ -152,7 +152,7 @@ Florian",
 }
 
 
-ej_replicator_assignment <- function(firstname,address,authorlast,ms,revision, back = FALSE){
+ej_replicator_assignment <- function(firstname,address,authorlast,ms,revision, back = FALSE, draft = FALSE){
 
     pnumber = ej_paper_number(authorlast,ms,revision)
     fullurl = ej_db_submitted_path(authorlast,ms,revision,full = TRUE)
@@ -246,13 +246,24 @@ ej_replicator_assignment <- function(firstname,address,authorlast,ms,revision, b
     )
     }
 
+    if (!back) {
+        subject = glue::glue("I assigned you the {authorlast} paper (EJ)")
+    } else {
+        subject = glue::glue("The {authorlast} paper (EJ) is back")
+
+    }
 
     email <- gmailr::gm_mime() |>
         gmailr::gm_to(address) |>
         gmailr::gm_from("'EJ Data Editor' <ejdataeditor@gmail.com>") |>
-        gmailr::gm_subject(glue::glue("I assigned you the {authorlast} paper (EJ)")) |>
+        gmailr::gm_subject(subject) |>
         gmailr::gm_html_body(body = message_body)
-    gmailr::gm_create_draft(email)
+    if (draft){
+        gmailr::gm_create_draft(email)
+    } else {
+        gmailr::gm_send_message(email)
+    }
+
 }
 
 
