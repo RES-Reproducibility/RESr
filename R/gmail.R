@@ -168,6 +168,8 @@ ej_replicator_assignment <- function(firstname,address,authorlast,ms,revision, b
             "Hi {firstname},
     <br>
     <br>
+    <b>Caution: New reporting template! Instructions below!</b>
+    <br>
     The <i>{authorlast}</i> paper is back.
     <br>
     <br>
@@ -204,6 +206,9 @@ ej_replicator_assignment <- function(firstname,address,authorlast,ms,revision, b
 
     message_body <- glue::glue(
     "Hi {firstname},
+    <br>
+    <br>
+    <b>Caution: New reporting template! Instructions below!</b>
     <br>
     <br>
     I assigned you the <i>{authorlast}</i> paper for <i>The Economic Journal (EJ)</i>.
