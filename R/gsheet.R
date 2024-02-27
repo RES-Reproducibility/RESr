@@ -8,7 +8,7 @@ billing_url <- function(){"https://docs.google.com/spreadsheets/d/1dJijWplmvxlqg
 
 #' Read EctJ sheet
 #'
-#'@export
+#'@exportq
 read_ectj <- function(refresh = FALSE){
     if (refresh){
         x = data.table(
@@ -32,8 +32,8 @@ read_list <- function(refresh = FALSE){
         x = data.table(
             # TODO https://googlesheets4.tidyverse.org/reference/cell-specification.html
             googlesheets4::read_sheet(
-                sheet_url(),sheet = "List",skip = 1, range = "List!A2:AC2000",
-                col_types = "ciccccccDDcccciccDDddccccDccD") %>%
+                sheet_url(),sheet = "List",skip = 1, range = "List!A2:AD2000",
+                col_types = "cicccccccDDcccciccDDddccccDccD") %>%
                 janitor::clean_names()
         )
         x = x[!is.na(ms)]
@@ -129,6 +129,9 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
     xectj = read_ectj(refresh = refresh)
     xej = read_list(refresh = refresh)
 
+    xej[  , days_replic := difftime(date_completed, date_assigned, units = "days")]
+    xectj[, days_replic := difftime(date_completed, date_assigned, units = "days")]
+
     reps = read_replicators(refresh = refresh)
     # 1. filter out rows of my replicators
     r0 = xectj[checker1 %in% reps$replicator][,.(checker1, checker2,date_assigned,
@@ -165,6 +168,8 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
                       decision,
                       journal)])
     r0 = merge(r0, reps[,.(replicator,name,surname)] , by.x = "checker", by.y = "replicator")
+    r0[, date_assigned := as.Date(date_assigned)]
+    r0[, date_completed := as.Date(date_completed)]
 
 
     r1 = xej[checker1 %in% read_replicators()$replicator][,
@@ -216,9 +221,9 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
                 ongoing_jobs = sum(is.na(date_completed)),
                 Avg_hours = round(mean(hours_spent,na.rm = TRUE),2),
                 Tot_hours = round(sum(hours_spent,na.rm = TRUE),2),
-                Avg_days = round(mean(days_replic,na.rm = TRUE),2),
+                Avg_days = round(mean(as.numeric(days_replic),na.rm = TRUE),2),
                 share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,name, surname,assigned_quarter)][
-                    order(assigned_quarter)
+                    order(c(assigned_quarter))
                 ]
 
     # compute total payments by quarter for EJ
@@ -229,7 +234,7 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
                 ongoing_jobs = sum(is.na(date_completed)),
                 Avg_hours = round(mean(hours_spent,na.rm = TRUE),2),
                 Tot_hours = round(sum(hours_spent,na.rm = TRUE),2),
-                Avg_days = round(mean(days_replic,na.rm = TRUE),2),
+                Avg_days = round(mean(as.numeric(days_replic),na.rm = TRUE),2),
                 share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,name, surname,assigned_quarter)][
                     order(assigned_quarter)
                 ]
@@ -240,7 +245,7 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
                                   ongoing_jobs = sum(is.na(date_completed)),
                                   Avg_hours = round(mean(hours_spent,na.rm = TRUE),2),
                                   Tot_hours = round(sum(hours_spent,na.rm = TRUE),2),
-                                  Avg_days = round(mean(days_replic,na.rm = TRUE),2),
+                                  Avg_days = round(mean(as.numeric(days_replic),na.rm = TRUE),2),
                                   share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,name, surname,assigned_quarter)][
                                       order(assigned_quarter)
                                   ]
@@ -252,7 +257,7 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
               ongoing_jobs = sum(is.na(date_completed)),
               Avg_hours = round(mean(hours_spent,na.rm = TRUE),2),
               Tot_hours = round(sum(hours_spent,na.rm = TRUE),2),
-              Avg_days = round(mean(days_replic,na.rm = TRUE),2),
+              Avg_days = round(mean(as.numeric(days_replic),na.rm = TRUE),2),
               share_reject = round(mean(decision == "R",na.rm = TRUE) , 2) ), by = .(checker,name, surname)]
 
 
@@ -264,7 +269,7 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
         googlesheets4::write_sheet(qtr_ej, billing_url(), sheet = "quarterly-payments-EJ")
         googlesheets4::write_sheet(qtr_ectj, billing_url(), sheet = "quarterly-payments-EctJ")
     }
-    list(qtr,ov,qtr_ectj,qtr_ej)
+    list(qtr = qtr,alltimes = ov,qtr_ectj = qtr_ectj,qtr_ej = qtr_ej, r = r)
 
 }
 

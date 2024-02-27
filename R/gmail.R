@@ -38,7 +38,7 @@ ej_testmail <- function(){
 
 ej_filerequest <- function(first,address,ms,url,draft = TRUE){
     email <- gmailr::gm_mime() |>
-        gmailr::gm_to(address) |>
+        gmailr::gm_to(c(address,"ej@editorialoffice.co.uk")) |>
         gmailr::gm_from("'EJ Data Editor' <ejdataeditor@gmail.com>") |>
         gmailr::gm_subject("EJ Replication Package Upload Request") |>
         gmailr::gm_html_body(
@@ -87,7 +87,7 @@ ej_randr <- function(firstname,lastname,address,ms,title,url,revision){
     report_path = file.path(ej_db_processed(),
                             paste0(paste(lastname,ms,paste0("R",revision),sep = "-"),".pdf"))
     if (!(file.exists(report_path))){
-        stop(paste(report_path, " does not exist."))
+        stop(paste(report_path, " does not exist - you need to first save the pdf of the report in the dropbox"))
     }
 
     # gmailr::gm_auth()  # authenticate with gmail
@@ -152,10 +152,112 @@ Florian",
 }
 
 
+
+#' EJ package on zenodo email
+#'
+#' create email that package is good to go.
+#'
+ej_zg2g <- function(firstname,lastname,address,ms,revision){
+
+    pnumber = ej_paper_number(lastname,ms,revision)
+
+    email <- gmailr::gm_mime() |>
+        gmailr::gm_to(c(address,"ej@editorialoffice.co.uk")) |>
+        gmailr::gm_from("'EJ Data Editor' <ejdataeditor@gmail.com>") |>
+        gmailr::gm_subject(glue::glue("EJ Data Editor: {pnumber} is on zenodo!")) |>
+        gmailr::gm_html_body(
+            glue::glue("Dear {firstname},
+            <br>
+            <br>
+            I have successfully verified that your package on <code>zenodo.org</code>
+            is identical to the lastest version in our system, therefore I have
+            accepted it into our zenodo community.
+            I have also logged the corresponding DOI, which means:
+<br>
+<br>
+<b>You have successfully completed all reproducibility checks at EJ!</b> 🎉
+<br>
+<br>
+
+The Editorial Office will handle the few remaining steps from here on.
+ <br>
+ <br>
+Congratulations!
+<br>
+<br>
+
+Best wishes,<br>
+
+Florian",
+                       ej_signature()))
+
+    # build email and create draft
+    email |>
+        gmailr::gm_send_message()
+}
+
+
+#' EJ Good to Go
+#'
+#' create email that package is good to go.
+#'
+ej_g2g <- function(firstname,lastname,address,ms,revision){
+
+    pnumber = ej_paper_number(lastname,ms,revision)
+
+    email <- gmailr::gm_mime() |>
+        gmailr::gm_to(c(address,"ej@editorialoffice.co.uk")) |>
+        gmailr::gm_from("'EJ Data Editor' <ejdataeditor@gmail.com>") |>
+        gmailr::gm_subject(glue::glue("EJ Data Editor: {pnumber} is good to go!")) |>
+        gmailr::gm_html_body(
+            glue::glue("Dear {firstname},
+            <br>
+            <br>
+            I am happy to tell you that your package {pnumber} is good to go from my end! 🚀
+            <br>
+            Two things are going to happen concurrently now:
+            <br>
+
+<ol>
+  <li>The Editorial Office will perform some quick anti-plagiarism checks on the paper.</li>
+  <li>You are requested to upload your package at the repository of the EJ Community
+  on https://zenodo.org/. Please follow the step by step instructions on the
+  EJ Data Editor Website (https://ejdataeditor.github.io/package.html#after-the-reproducibility-checks-are-completed-publish-your-package).</li>
+</ol>
+<br>
+It is of great importance that you do not modify the files in your submitted package anymore. We will check the final version of the package you sent us against what you will publish on Zenodo in a very strict (and automated) fashion.
+Unless the files on Zenodo are <i>exactly identical</i> to ours, this check will fail.
+Please remove the letter to the data editor before you submit - and do <b>not</b> include any confidential data.
+<br>
+
+After these steps are completed, your files will be sent back to your editor for final acceptance.
+All this should happen before too long.
+In the meantime, if you have any queries regarding the publication process, please contact ej@res.org.uk.
+
+<br>
+<br>
+
+Thank you again for your cooperation, and congratulations on a very fine replication package indeed.
+
+<br>
+<br>
+
+Kind regards,<br>
+
+Florian",
+                       ej_signature()))
+
+    # build email and create draft
+    email |>
+        gmailr::gm_send_message()
+}
+
+
 ej_replicator_assignment <- function(firstname,address,authorlast,ms,revision, back = FALSE, draft = FALSE){
 
     pnumber = ej_paper_number(authorlast,ms,revision)
     fullurl = ej_db_submitted_path(authorlast,ms,revision,full = TRUE)
+
     if (!(file.exists(fullurl))){
         stop(paste(fullurl, " does not exist."))
     }
