@@ -8,7 +8,7 @@ billing_url <- function(){"https://docs.google.com/spreadsheets/d/1dJijWplmvxlqg
 
 #' Read EctJ sheet
 #'
-#'@exportq
+#'@export
 read_ectj <- function(refresh = FALSE){
     if (refresh){
         x = data.table(
@@ -33,7 +33,7 @@ read_list <- function(refresh = FALSE){
             # TODO https://googlesheets4.tidyverse.org/reference/cell-specification.html
             googlesheets4::read_sheet(
                 sheet_url(),sheet = "List",skip = 1, range = "List!A2:AD2000",
-                col_types = "cicccccccDDcccciccDDddccccDccD") %>%
+                col_types = "cicccccccDDcccicccDDddccccDccD") %>%
                 janitor::clean_names()
         )
         x = x[!is.na(ms)]
@@ -41,10 +41,23 @@ read_list <- function(refresh = FALSE){
     } else {
         x = readRDS(file = "~/Dropbox/EJ/EJ-1-key-documents/Report/current-sheet.Rds")
     }
+    # fix missing arrival date field
+    x[, arrival_date := as.Date(max(arrival_date_ee, arrival_date_package,na.rm = TRUE)), by = .(ms, round)]
+    x[(!is.finite(arrival_date)) | is.na(arrival_date) , arrival_date := date_assigned]
+
+    # drop if waiting for submission
+    x = x[is.na(de_comments)]
+    #
+    # resubmitted date
+    data.table::setorder(x,ms,round)
+    x[, date_resub := data.table::shift(arrival_date, type = "lead"), by = ms ]
     x
 }
 
 nazerosum <- function(x,y){
+    if (length(x)>1){
+        print(x)
+    }
     if(is.na(x)){
         x = 0
     } else if (is.na(y)){
@@ -57,18 +70,19 @@ clean_list <- function(refresh_sheet = FALSE){
 
     x = read_list(refresh = refresh_sheet)
 
+
     x[, completed_quarter := zoo::as.yearqtr(date_completed)]
     # create some variables
-    x[, completed := status %in% c("AP","NT", "P", "p"), by = ms]
-    x[, hours_spent = nazerozum(hours_checker1, hours_checker2)]
-    x[, hours_paper := sum(hours_spent), by = ms]
+    x[, completed := any(status %in% c("AP","NT", "P", "p")), by = ms]
+    x[, hours_spent := nazerosum(hours_checker1, hours_checker2), by = .(ms,round)]
+    x[, hours_paper := sum(hours_spent,na.rm = TRUE), by = ms]
     x[, iterations_paper := max(round), by = ms]
 
     # timing measures on each iteration
-    x[ , time_assign          := lubridate::make_difftime(date_assigned - arrival_date, units = "days")]
-    x[ , time_replication     := lubridate::make_difftime(date_completed - date_assigned, units = "days")]
-    x[ , time_decision        := lubridate::make_difftime(date_processed - date_completed, units = "days")]
-    x[ , time_resubmission    := lubridate::make_difftime(date_resub - date_processed, units = "days")]
+    x[ , time_assign          := date_assigned - arrival_date]
+    x[ , time_replication     := date_completed - date_assigned]
+    x[ , time_decision        := date_processed - date_completed]
+    x[ , time_resubmission    := date_resub - date_processed]
     # compute cumulative times
     x[ , cumtime_replication  := time_assign + time_replication]
     x[ , cumtime_decision     := cumtime_replication + time_decision]
@@ -89,13 +103,13 @@ clean_list <- function(refresh_sheet = FALSE){
     hazard[, hazard_smooth := data.table::frollmean(hazard,n = 11,na.rm = TRUE), by = .(sround)]
 
     # add total timing at completed paper level
-    xp <- x[ , list(
-              hours_spent = sum(hours_spent),
-              iterations_paper = .N,
-              time_assign_paper = sum(time_assign),
-              time_replication_paper =sum(cumtime_replication),
-              time_decision_paper = sum(cumtime_decision),
-              time_resubmission_paper = sum(cumtime_resubmission),
+    xp <- x[(completed) , list(
+              hours_spent = sum(hours_spent,na.rm = TRUE),
+              iterations_paper,
+              time_assign_paper = sum(time_assign,na.rm = TRUE),
+              time_replication_paper =sum(cumtime_replication,na.rm = TRUE),
+              time_decision_paper = sum(cumtime_decision,na.rm = TRUE),
+              time_resubmission_paper = sum(cumtime_resubmission,na.rm = TRUE),
               arrival_date = .SD[round == 1, as.Date(arrival_date)]
           ),
       by = ms]
