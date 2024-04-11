@@ -82,22 +82,24 @@ Florian",
 #' then create subdir `old` in their uplaod folder
 #' so that they can upload the new package using the same url.
 #'
-ej_randr <- function(firstname,lastname,address,ms,title,url,revision){
+ej_randr <- function(firstname,lastname,address,ms,title,url,revision, attachment = TRUE){
 
     report_path = file.path(ej_db_processed(),
                             paste0(paste(lastname,ms,paste0("R",revision),sep = "-"),".pdf"))
-    if (!(file.exists(report_path))){
+    if ((!(file.exists(report_path))) & attachment){
         stop(paste(report_path, " does not exist - you need to first save the pdf of the report in the dropbox"))
     }
 
     # gmailr::gm_auth()  # authenticate with gmail
 
-    email <- gmailr::gm_mime() |>
-        gmailr::gm_to(address) |>
-        gmailr::gm_from("'EJ Data Editor' <ejdataeditor@gmail.com>") |>
-        gmailr::gm_subject("EJ Reproducibility Checks Results") |>
-        gmailr::gm_html_body(
-            glue::glue("Dear {firstname},
+    if (attachment){
+
+        email <- gmailr::gm_mime() |>
+            gmailr::gm_to(address) |>
+            gmailr::gm_from("'EJ Data Editor' <ejdataeditor@gmail.com>") |>
+            gmailr::gm_subject("EJ Reproducibility Checks Results") |>
+            gmailr::gm_html_body(
+                glue::glue("Dear {firstname},
             <br>
             <br>
             Thank you for providing us with your final files and replication
@@ -143,12 +145,73 @@ look forward to receiving your revised package.
 Kind regards,<br>
 
 Florian",
-                       ej_signature()))
+                           ej_signature()))
+
+    } else {
+
+        email <- gmailr::gm_mime() |>
+            gmailr::gm_to(address) |>
+            gmailr::gm_from("'EJ Data Editor' <ejdataeditor@gmail.com>") |>
+            gmailr::gm_subject("EJ Reproducibility Checks Results") |>
+            gmailr::gm_html_body(
+                glue::glue("Dear {firstname},
+            <br>
+            <br>
+            Thank you for providing us with your final files and replication
+            package for your paper {ms}, titled '{title}'.
+            I am asking you for a quick resubmission of your package based the following points - we don't provide
+            our usual full report in this instance.
+            <br>
+
+<ol>
+  <li>Item 1</li>
+  <li>Item 2.</li>
+</ol>
+<br>
+Could you please address these issues and resubmit your final files (including your paper, appendix and replication package) like before? Please use this link:<br><br>
+
+                       {url}
+
+<br>
+<br>
+
+We need you to submit the entire package again because updating
+the replication package ourselves increases the potential risk
+that the files you intend to submit for possible publication may be mishandled.
+
+<br>
+Please reply to this email in response to my points above
+<br>
+<br>
+
+
+I would like to thank you for your cooperation and I
+look forward to receiving your revised package.
+<br>
+<br>
+
+
+Kind regards,<br>
+
+Florian",
+                           ej_signature()))
+
+
+    }
+
+
 
     # build email and create draft
-    email |>
-        gmailr::gm_attach_file(report_path) |>
-        gmailr::gm_create_draft()
+    if (attachment){
+        email |>
+            gmailr::gm_attach_file(report_path) |>
+            gmailr::gm_create_draft()
+
+    } else {
+        email |>
+            gmailr::gm_create_draft()
+    }
+
 }
 
 
