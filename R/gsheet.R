@@ -5,6 +5,9 @@ sheet_url   <- function() {"https://docs.google.com/spreadsheets/d/1D7nhTs8ao9yI
 EctJsheet_url   <- function() {"https://docs.google.com/spreadsheets/d/1fCz0ZyK7Fsw2E9jbgKgedtoDgmBePk2V_0cuyHijfv0"}
 billing_url <- function(){"https://docs.google.com/spreadsheets/d/1dJijWplmvxlqgFgzYHy7gFs4FCFsLAv7LifX4g-4GIo"}
 
+view_bill <- function(){
+    googlesheets4::gs4_browse(billing_url())
+}
 
 #' Read EctJ sheet
 #'
@@ -226,8 +229,9 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
 
     r = rbind(r0,r1)
     r[, assigned_quarter := zoo::as.yearqtr(date_assigned)]
+    r[, completed_quarter := zoo::as.yearqtr(date_completed)]
 
-    # r = r[!is.na(completed_quarter)]
+    r = r[!is.na(completed_quarter)]
     # compute total payments by quarter
     qtr = r[, .(completed_jobs = sum(!is.na(date_completed)),
                 completed_papers = .SD[!is.na(date_completed), length(unique(ms))],
@@ -236,8 +240,8 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
                 Avg_hours = round(mean(hours_spent,na.rm = TRUE),2),
                 Tot_hours = round(sum(hours_spent,na.rm = TRUE),2),
                 Avg_days = round(mean(as.numeric(days_replic),na.rm = TRUE),2),
-                share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,name, surname,assigned_quarter)][
-                    order(c(assigned_quarter))
+                share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,name, surname,completed_quarter)][
+                    order(c(completed_quarter))
                 ]
 
     # compute total payments by quarter for EJ
@@ -249,8 +253,8 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
                 Avg_hours = round(mean(hours_spent,na.rm = TRUE),2),
                 Tot_hours = round(sum(hours_spent,na.rm = TRUE),2),
                 Avg_days = round(mean(as.numeric(days_replic),na.rm = TRUE),2),
-                share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,name, surname,assigned_quarter)][
-                    order(assigned_quarter)
+                share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,name, surname,completed_quarter)][
+                    order(completed_quarter)
                 ]
     # compute total payments by quarter for EctJ
     qtr_ectj = r[journal == "EctJ", .(completed_jobs = sum(!is.na(date_completed)),
@@ -260,8 +264,8 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
                                   Avg_hours = round(mean(hours_spent,na.rm = TRUE),2),
                                   Tot_hours = round(sum(hours_spent,na.rm = TRUE),2),
                                   Avg_days = round(mean(as.numeric(days_replic),na.rm = TRUE),2),
-                                  share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,name, surname,assigned_quarter)][
-                                      order(assigned_quarter)
+                                  share_reject = round(mean(decision == "R",na.rm = TRUE) , 2)), by = .(checker,name, surname,completed_quarter)][
+                                      order(completed_quarter)
                                   ]
 
     # compute stats all times
@@ -276,9 +280,9 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
 
 
     if (write){
-        qtr[, assigned_quarter := as.character(assigned_quarter)]
-        qtr_ej[, assigned_quarter := as.character(assigned_quarter)]
-        qtr_ectj[, assigned_quarter := as.character(assigned_quarter)]
+        qtr[, completed_quarter := as.character(completed_quarter)]
+        qtr_ej[, completed_quarter := as.character(completed_quarter)]
+        qtr_ectj[, completed_quarter := as.character(completed_quarter)]
         googlesheets4::write_sheet(qtr, billing_url(), sheet = "quarterly-payments-overall")
         googlesheets4::write_sheet(qtr_ej, billing_url(), sheet = "quarterly-payments-EJ")
         googlesheets4::write_sheet(qtr_ectj, billing_url(), sheet = "quarterly-payments-EctJ")
