@@ -36,9 +36,9 @@ ej_testmail <- function(){
     gmailr::gm_send_message(email)
 }
 
-ej_filerequest <- function(first,address,ms,url,draft = TRUE){
+ej_filerequest <- function(first,address,address2,ms,url,draft = TRUE){
     email <- gmailr::gm_mime() |>
-        gmailr::gm_to(c(address,"ej@editorialoffice.co.uk")) |>
+        gmailr::gm_to(make_email_addresses(address,address2)) |>
         gmailr::gm_from("'EJ Data Editor' <ejdataeditor@gmail.com>") |>
         gmailr::gm_subject("EJ Replication Package Upload Request") |>
         gmailr::gm_html_body(
@@ -82,7 +82,7 @@ Florian",
 #' then create subdir `old` in their uplaod folder
 #' so that they can upload the new package using the same url.
 #'
-ej_randr <- function(firstname,lastname,address,ms,title,url,revision, attachment = TRUE){
+ej_randr <- function(firstname,lastname,address,address2,ms,title,url,revision, attachment = TRUE){
 
     report_path = file.path(ej_db_processed(),
                             paste0(paste(lastname,ms,paste0("R",revision),sep = "-"),".pdf"))
@@ -95,7 +95,7 @@ ej_randr <- function(firstname,lastname,address,ms,title,url,revision, attachmen
     if (attachment){
 
         email <- gmailr::gm_mime() |>
-            gmailr::gm_to(address) |>
+            gmailr::gm_to(make_email_addresses(address,address2,eof = FALSE)) |>
             gmailr::gm_from("'EJ Data Editor' <ejdataeditor@gmail.com>") |>
             gmailr::gm_subject("EJ Reproducibility Checks Results") |>
             gmailr::gm_html_body(
@@ -108,13 +108,12 @@ ej_randr <- function(firstname,lastname,address,ms,title,url,revision, attachmen
             As you will see in the report, the reproducibility team has identified
             a few issues that need to be fixed.
             <br>
-            <br>
 
 <ol>
   <li>Item 1</li>
   <li>Item 2.</li>
 </ol>
-<br>
+
 Could you please address these issues and resubmit your final files (including your paper, appendix and replication package) like before? Please use this link:<br><br>
 
                        {url}
@@ -150,7 +149,7 @@ Florian",
     } else {
 
         email <- gmailr::gm_mime() |>
-            gmailr::gm_to(address) |>
+            gmailr::gm_to(make_email_addresses(address,address2,eof = FALSE)) |>
             gmailr::gm_from("'EJ Data Editor' <ejdataeditor@gmail.com>") |>
             gmailr::gm_subject("EJ Reproducibility Checks Results") |>
             gmailr::gm_html_body(
@@ -214,18 +213,29 @@ Florian",
 
 }
 
-
+make_email_addresses <- function(address, address2, eof = TRUE){
+    if (address2 != ""){
+        addresses <- c(address,address2)
+    } else {
+            addresses <- c(address)
+    }
+    if (eof){
+        addresses <- c(addresses,"ej@editorialoffice.co.uk")
+    }
+    addresses
+}
 
 #' EJ package on zenodo email
 #'
 #' create email that package is good to go.
 #'
-ej_zg2g <- function(firstname,lastname,address,ms,revision){
+ej_zg2g <- function(firstname,lastname,address,address2 = NULL,ms,revision){
 
     pnumber = ej_paper_number(lastname,ms,revision)
 
+
     email <- gmailr::gm_mime() |>
-        gmailr::gm_to(c(address,"ej@editorialoffice.co.uk")) |>
+        gmailr::gm_to(make_email_addresses(address,address2)) |>
         gmailr::gm_from("'EJ Data Editor' <ejdataeditor@gmail.com>") |>
         gmailr::gm_subject(glue::glue("EJ Data Editor: {pnumber} is on zenodo!")) |>
         gmailr::gm_html_body(
@@ -264,12 +274,12 @@ Florian",
 #'
 #' create email that package is good to go.
 #'
-ej_g2g <- function(firstname,lastname,address,ms,revision){
+ej_g2g <- function(firstname,lastname,address,address2,ms,revision, draft = FALSE){
 
     pnumber = ej_paper_number(lastname,ms,revision)
 
     email <- gmailr::gm_mime() |>
-        gmailr::gm_to(c(address,"ej@editorialoffice.co.uk")) |>
+        gmailr::gm_to(make_email_addresses(address,address2)) |>
         gmailr::gm_from("'EJ Data Editor' <ejdataeditor@gmail.com>") |>
         gmailr::gm_subject(glue::glue("EJ Data Editor: {pnumber} is good to go!")) |>
         gmailr::gm_html_body(
@@ -310,9 +320,11 @@ Kind regards,<br>
 Florian",
                        ej_signature()))
 
-    # build email and create draft
-    email |>
-        gmailr::gm_send_message()
+    if (draft){
+        gmailr::gm_create_draft(email)
+    } else {
+        gmailr::gm_send_message(email)
+    }
 }
 
 
