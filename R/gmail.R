@@ -5,8 +5,15 @@
 # gmailr::gm_auth()
 
 # do auth once per session
-ej_auth <- function() {gmailr::gm_auth(cache = TRUE)}  # authenticate with gmail
-
+auth <- function(journal) {
+    if (journal == "EJ"){
+        gmailr::gm_auth_configure(path = Sys.getenv("R_GMAIL_EJ"))
+    } else if  (journal == "ECTJ"){
+        gmailr::gm_auth_configure(path = Sys.getenv("R_GMAIL_ECTJ"))
+    } else {
+        stop("invalid journal: EJ or ECTJ")
+    }
+}
 
 ej_db_processed <- function(){
     file.path(Sys.getenv("R_DB_EJ"),"EJ-3-replication-reports","DE-processed")
@@ -32,6 +39,23 @@ ej_testmail <- function(){
         gmailr::gm_from("'EJ Data Editor' <ejdataeditor@gmail.com>") |>
         gmailr::gm_subject("Gmailr is a very handy package!") |>
         gmailr::gm_html_body(paste("<b>Gmailr</b> is a <i>very</i> handy package!",ej_signature()))
+
+    gmailr::gm_send_message(email)
+}
+
+testmail <- function(journal = "EJ"){
+    email <- gmailr::gm_mime() |>
+        gmailr::gm_to("'Flo' <florian.oswald@gmail.com>") |>
+        gmailr::gm_from(ifelse(journal == "EJ",
+                               "'EJ Data Editor' <ejdataeditor@gmail.com>",
+                               "'EctJ Data Editor' <ectjdataeditor@gmail.com>")
+        ) |>
+        gmailr::gm_subject(glue::glue("Gmailr is a very handy package for the {journal} journal")) |>
+        gmailr::gm_html_body(
+            paste("<b>Gmailr</b> is a <i>very</i> handy package!",
+                  ifelse(journal == "EJ", ej_signature(), ectj_signature())
+                  )
+            )
 
     gmailr::gm_send_message(email)
 }
@@ -460,6 +484,20 @@ ej_signature <- function(){
     The Economic Journal<br>
     email: ejdataeditor@gmail.com<br>
     web (EJ) : https://ejdataeditor.github.io/<br>
+    web (personal) : https://floswald.github.io/
+    "
+}
+
+ectj_signature <- function(){
+    "
+    <br>
+    <br>
+    --<br>
+    Florian Oswald<br>
+    Data Editor<br>
+    The Econometrics Journal<br>
+    email: ectjdataeditor@gmail.com<br>
+    web (EJ) : https://ectjdataeditor.github.io/<br>
     web (personal) : https://floswald.github.io/
     "
 }
