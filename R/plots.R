@@ -76,7 +76,7 @@ plot_trends <- function(x){
 
 }
 
-date_labeller <- function(start = "2020-01-01", stop = "2024-01-01"){
+date_labeller <- function(start = "2020-01-01", stop = Sys.Date()){
     seq(as.Date(start), as.Date(stop), by = "6 months")
 
 }

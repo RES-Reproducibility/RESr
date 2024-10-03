@@ -35,8 +35,8 @@ read_list <- function(refresh = FALSE){
         x = data.table(
             # TODO https://googlesheets4.tidyverse.org/reference/cell-specification.html
             googlesheets4::read_sheet(
-                sheet_url(),sheet = "List",skip = 1, range = "List!A2:AD2000",
-                col_types = "cicccccccDDcccicccDDddccccDccD") %>%
+                sheet_url(),sheet = "List",skip = 1, range = "List!A2:AE2000",
+                col_types = "ciccccccccDDcccicccDDddccccDccD") %>%
                 janitor::clean_names()
         )
         x = x[!is.na(ms)]
@@ -48,6 +48,8 @@ read_list <- function(refresh = FALSE){
     x[, arrival_date := as.Date(max(arrival_date_ee, arrival_date_package,na.rm = TRUE)), by = .(ms, round)]
     x[(!is.finite(arrival_date)) | is.na(arrival_date) , arrival_date := date_assigned]
 
+    # coerce hours to numeric
+    x[ , hours_checker2 := as.numeric(hours_checker2)]
     # drop if waiting for submission
     x = x[is.na(de_comments)]
     #
@@ -76,7 +78,7 @@ clean_list <- function(refresh_sheet = FALSE){
 
     x[, completed_quarter := zoo::as.yearqtr(date_completed)]
     # create some variables
-    x[, completed := any(status %in% c("AP","NT", "P", "p")), by = ms]
+    x[, completed := any(status %in% c("AP","NT", "nt", "P", "p")), by = ms]
     x[, hours_spent := nazerosum(hours_checker1, hours_checker2), by = .(ms,round)]
     x[, hours_paper := sum(hours_spent,na.rm = TRUE), by = ms]
     x[, iterations_paper := max(round), by = ms]
@@ -230,6 +232,8 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
     r = rbind(r0,r1)
     r[, assigned_quarter := zoo::as.yearqtr(date_assigned)]
     r[, completed_quarter := zoo::as.yearqtr(date_completed)]
+
+
 
     r = r[!is.na(completed_quarter)]
     # compute total payments by quarter
