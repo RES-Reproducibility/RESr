@@ -296,4 +296,17 @@ billing <- function(rate = 25, write = FALSE,refresh = FALSE){
 }
 
 
+billing_table_ej <- function(){
+    b = billing()
+    t = b$qtr_ej[, .(
+        Hours = sum(Tot_hours,na.rm = TRUE),
+        Euros = sum(qtr_payment_euros),
+        Replicators = .N,
+        `Hours/Replicator` = mean(Tot_hours,na.rm = TRUE),
+        mean_completed_jobs = mean(completed_jobs),
+        mean_pay = mean(qtr_payment_euros)), by = list(Quarter = completed_quarter)]
+    t
+
+}
+
 
