@@ -3,7 +3,7 @@
 export("%>%")
 export(billing)
 export(read_ectj)
-export(read_list)
+export(read_ej)
 importFrom(data.table,":=")
 importFrom(data.table,.BY)
 importFrom(data.table,.EACHI)

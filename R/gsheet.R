@@ -9,6 +9,14 @@ view_bill <- function(){
     googlesheets4::gs4_browse(billing_url())
 }
 
+read_sheet <- function(journal, refresh = FALSE){
+    if (journal == "EJ"){
+        read_ej(refresh = refresh)
+    } else {
+        read_ectj(refresh = refresh)
+    }
+}
+
 #' Read EctJ sheet
 #'
 #'@export
@@ -16,7 +24,8 @@ read_ectj <- function(refresh = FALSE){
     if (refresh){
         x = data.table(
             googlesheets4::read_sheet(
-                EctJsheet_url(),sheet = "List",skip = 1, range = "List!A2:AD1000000") %>%
+                EctJsheet_url(),sheet = "List",skip = 1, range = "List!A2:AD1000000",
+                col_types = "cicccccDcccDDddccccDccDddddddd") %>%
                 janitor::clean_names()
         )
         x = x[!is.na(ms)]
@@ -30,7 +39,7 @@ read_ectj <- function(refresh = FALSE){
 #' Read EJ Google Sheet with Replications
 #'
 #' @export
-read_list <- function(refresh = FALSE){
+read_ej <- function(refresh = FALSE){
     if (refresh){
         x = data.table(
             # TODO https://googlesheets4.tidyverse.org/reference/cell-specification.html
@@ -71,10 +80,7 @@ nazerosum <- function(x,y){
     x + y
 }
 
-clean_list <- function(refresh_sheet = FALSE){
-
-    x = read_list(refresh = refresh_sheet)
-
+clean_list <- function(x,ndays = 60){
 
     x[, completed_quarter := zoo::as.yearqtr(date_completed)]
     # create some variables
@@ -98,6 +104,16 @@ clean_list <- function(refresh_sheet = FALSE){
     #           measure.vars = c("time_assign","cumtime_replication","cumtime_decision"))
     # ggplot(mr, aes(x = arrival_date,y= value, color = variable)) + geom_point()
 
+    first_date = max(as.Date("2020-01-01"),x[, min(arrival_date,na.rm = TRUE)])
+    last_date = x[,max(arrival_date,na.rm = TRUE)]
+    date_breaks = seq(as.Date(first_date), as.Date(last_date), by = ndays)
+    midpoints = date_breaks + diff(date_breaks[c(1,2)]) / 2
+
+    # bin dates
+    x[, date_bin := cut(arrival_date, breaks = date_breaks, labels = midpoints[-length(midpoints)],include.lowest = TRUE)]
+    x[,date_bin := as.Date(date_bin)]
+
+
 
     # moving averages at iteration level
     setkey(x, arrival_date, ms)
@@ -118,6 +134,10 @@ clean_list <- function(refresh_sheet = FALSE){
               arrival_date = .SD[round == 1, as.Date(arrival_date)]
           ),
       by = ms]
+    xp[, date_bin := cut(arrival_date, breaks = date_breaks, labels = midpoints[-length(midpoints)],include.lowest = TRUE)]
+    xp[,date_bin := as.Date(date_bin)]
+
+
     # # add cumulatives
     # xp[, cumtime_replication_paper := time_assign_paper + time_replication_paper]
     # xp[, cumtime_decision_paper := cumtime_replication_paper + time_decision_paper]

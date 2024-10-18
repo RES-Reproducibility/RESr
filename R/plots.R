@@ -1,7 +1,12 @@
 
 
 
-plot_all <- function(refresh = FALSE,write = FALSE){
+plot_all <- function(journal = "EJ",refresh = FALSE,write = FALSE){
+
+    # load correct data
+    li = read_sheet(journal,refresh = refresh)
+    cl = clean_list(li)
+
     # width and height
     w1 = 8
     h1 = 6
@@ -10,10 +15,9 @@ plot_all <- function(refresh = FALSE,write = FALSE){
     w2 = 5
     h2 = 5
 
-    path = file.path("~","git","EJData","reports",paste0("Report"),"images")
+    path = file.path("~","git","EJData","reports",journal,"images")
+    dir.create(path, showWarnings = FALSE)
 
-    li = read_list(refresh = refresh)
-    cl = clean_list(refresh = refresh)
 
     out = list()
     out$proctime_iters = plot_proctime(cl$iterations)
@@ -26,14 +30,14 @@ plot_all <- function(refresh = FALSE,write = FALSE){
 
     out$proctime_papers = plot_proctime(cl$papers,by = "Paper")
 
-    hpi = plot_hours_iters_paper()
+    hpi = plot_hours_iters_paper(cl)
     out$hours_iteration = hpi$hours_i
     out$hours_paper = hpi$hours_p
     out$iters_paper = hpi$iters_p
 
     out$data_statements = plot_DS(li)
 
-    out$software_ts = plot_software()
+    out$software_ts = plot_software(cl)
 
     if (write){
         ggplot2::ggsave(file.path(path,"proctime_iters.png"),
@@ -82,56 +86,68 @@ date_labeller <- function(start = "2020-01-01", stop = Sys.Date()){
 }
 
 #' give clean_list
-plot_hours_iters_paper <-function(){
-    x = clean_list()
+plot_hours_iters_paper <-function(x){
+    first_date = firstdate(x$iterations)
+
     stopifnot(is.list(x))
     l = list()
-    ii = x$iterations[hours_spent < 6, .(hours_spent = median(hours_spent, na.rm= TRUE)), by = arrival_date]
-    ii[, hours_smooth := data.table::frollmean(hours_spent,n = 11,na.rm = TRUE)]
+    ii = x$iterations[ ,list(hours_smooth = mean(hours_spent, na.rm= TRUE)), by = date_bin]
 
-    l$hours_i = ggplot2::ggplot(x$iterations[hours_spent < 6], aes(x = arrival_date, y = hours_spent)) + geom_point(size = 0.5) +
-        ggplot2::geom_line(data = ii, aes(x = arrival_date,y = hours_smooth), size = 1, color = "red") + theme_bw() +
-        ggplot2::scale_x_date("Arrival Date",breaks = date_labeller() ,date_labels = "%Y-%m",
-                     limits = c(as.Date("2020-01-01"), NA)) +
-        ggplot2::geom_vline(xintercept = as.Date("2023-07-01")) + ggplot2::ggtitle("Hours Per Iteration", subtitle = glue::glue("Dropping {nrow(x$iterations[hours_spent>=6])} Outliers"))
+    date_scales = ggplot2::scale_x_date("Arrival Date",breaks = date_labeller(start = first_date) ,date_labels = "%Y-%m",
+                              limits = c(as.Date(first_date), NA))
+    vlines = ggplot2::geom_vline(xintercept = as.Date("2023-07-01"))
 
-    pp = x$papers[ hours_spent < 10,.(hours_spent = median(hours_spent, na.rm= TRUE)), by = arrival_date]
-    pp[, hours_spent := data.table::frollmean(hours_spent,n = 11,na.rm = TRUE)]
+    l$hours_i = ggplot2::ggplot(x$iterations, aes(x = arrival_date, y = hours_spent)) +
+        geom_point(size = 0.5) +
+        ggplot2::geom_line(data = ii, aes(x = date_bin,y = hours_smooth), size = 1, color = "red") +
+        theme_bw() +
+        ggplot2::ggtitle("Hours Per Iteration") +
+        date_scales +
+        vlines
 
-    ip = x$papers[,.(iters_paper = mean(iterations_paper, na.rm= TRUE)), by = arrival_date]
-    ip[, iterations_paper := data.table::frollmean(iters_paper,n = 11,na.rm = TRUE)]
+    pp = x$papers[ ,.(hours_spent = mean(hours_spent, na.rm= TRUE)), by = date_bin]
+
+    ip = x$papers[,.(iters_paper = mean(iterations_paper, na.rm= TRUE)), by = date_bin]
 
 
-    l$hours_p = ggplot2::ggplot(x$papers[ hours_spent < 10], aes(x = arrival_date, y = hours_spent)) + geom_point(size = 0.5) +
-        ggplot2::geom_line(data = pp, aes(x = arrival_date, y = hours_spent), color = "red",size = 1) + theme_bw() +
-        ggplot2::scale_x_date("Arrival Date",limits = c(as.Date("2020-01-01"), NA), breaks = date_labeller()  ,date_labels = "%Y-%m") +
-        ggplot2::geom_vline(xintercept = as.Date("2023-07-01")) + ggplot2::ggtitle("Hours Per Paper", subtitle = glue::glue("Dropping {nrow(x$papers[hours_spent >= 10])} Outliers"))
+    l$hours_p = ggplot2::ggplot(x$papers, aes(x = arrival_date, y = hours_spent)) + geom_point(size = 0.5) +
+        ggplot2::geom_line(data = pp, aes(x = date_bin, y = hours_spent), color = "red",linewidth = 1) +
+        theme_bw() +
+        ggplot2::ggtitle("Hours Per Paper") +
+        date_scales +
+        vlines
 
     l$iters_p = ggplot2::ggplot(x$papers, aes(x = arrival_date, y = iterations_paper)) + geom_point(size = 0.5) +
-        ggplot2::geom_line(data = ip, aes(x = arrival_date, y = iterations_paper)  , color = "red",size = 1) + ggplot2::theme_bw() +
-        ggplot2::scale_x_date("Arrival Date",limits = c(as.Date("2020-01-01"), NA),breaks = date_labeller()  ,date_labels = "%Y-%m") +
-        ggplot2::ggtitle("Iterations Per Paper")
+        ggplot2::geom_line(data = ip, aes(x = date_bin, y = iters_paper)  , color = "red",size = 1) +
+        ggplot2::theme_bw() +
+        ggplot2::ggtitle("Iterations Per Paper") +
+        date_scales +
+        vlines
 
 
     l
 }
 
+firstdate <- function(x,def_init = "2020-01-01"){
+    max(as.Date(def_init),x[, min(arrival_date,na.rm = TRUE)])
+}
 
-plot_proctime <- function(x, by = "Iteration"){
+
+plot_proctime <- function(x, ndays = 60, by = "Iteration"){
+
+    first_date = firstdate(x)
 
     if (by == "Iteration"){
         labs = c("Assignment","Replication","Decision", "Resubmission")
-        mr = data.table::melt(x, id.vars = c("arrival_date","ms","round"),
+        mr = data.table::melt(x, id.vars = c("arrival_date","date_bin","ms","round"),
                               measure.vars = c("time_assign",
                                                "cumtime_replication",
                                                "cumtime_decision",
                                                "cumtime_resubmission"),
                               value.name =  "Days")
         mr = mr[Days < 50 & arrival_date > "2020-01-01" & Days >= 0]
-
-        # mean hours by arrival date
-        h = x[, .(hours = mean(hours_spent, na.rm = TRUE)), by = arrival_date]
-        h[, smooth := data.table::frollmean(hours,n = 30,na.rm = TRUE)]
+        # collapsed
+        mr_col = mr[,lapply(.SD,mean,na.rm = TRUE), by = .(date_bin, variable),.SDcols = "Days"]
 
         hline_v = 15
 
@@ -140,58 +156,38 @@ plot_proctime <- function(x, by = "Iteration"){
     } else {
         # by paper
         labs = c("Assignment","Replication","Decision", "Resubmission")
-        mr = data.table::melt(x, id.vars = c("arrival_date","ms"),
+        mr = data.table::melt(x, id.vars = c("arrival_date","date_bin","ms"),
                               measure.vars = c("time_assign_paper",
                                                "time_replication_paper",
                                                "time_decision_paper",
                                                "time_resubmission_paper"),
                               value.name =  "Days")
-        mr = mr[Days < 60 & arrival_date > "2020-01-01" & Days >= 0]
+        mr = mr[Days < 60 & arrival_date > max("2020-01-01",mr[, min(arrival_date,na.rm = TRUE)], na.rm = TRUE) & Days >= 0]
+
+        # collapsed
+        mr_col = mr[,lapply(.SD,mean,na.rm = TRUE), by = .(date_bin, variable),.SDcols = "Days"]
 
         hline_v = 25
 
     }
-    mr[, arrival_date := as.Date(arrival_date)]
-    mr = mr[!is.na(arrival_date)]
-    setkey(mr, arrival_date,ms)
-
-    # rejection
-    haz = mr[, .(hazard = mean(Days,na.rm = TRUE)), by = .(arrival_date, variable)]
-    haz[, smooth := data.table::frollmean(hazard,n = 40,na.rm = TRUE), by = .(variable)]
-
-    # mean hours spent by arrival date
-    # h = x[, .(hours = mean(hours_spent, na.rm = TRUE)), by = arrival_date]
-    # h[, smooth := data.table::frollmean(hours,n = 30,na.rm = TRUE)]
-
-    # base plot
     p = ggplot2::ggplot(mr, aes(x = arrival_date,y= Days, color = variable)) + ggplot2::geom_point(size = 0.5) +
-        ggplot2::geom_line(data = haz, aes(x = arrival_date, y = smooth, color = variable),size = 1)
-
-
+        ggplot2::geom_line(data = mr_col, aes(x = date_bin, y = Days, color = variable),linewidth = 1)
 
     #days
     days = p + ggplot2::theme_bw() + ggplot2::theme(legend.position = "bottom") +
         ggplot2::scale_color_discrete(name = "Time Until:",
                            labels = labs) +
-        ggplot2::scale_x_date("Arrival Date",limits = c(as.Date("2020-01-01"), NA),breaks = date_labeller()  ,date_labels = "%Y-%m") +
+        ggplot2::scale_x_date("Arrival Date",limits = c(as.Date(first_date), NA),breaks = date_labeller(start = first_date)  ,date_labels = "%Y-%m") +
         ggplot2::geom_vline(xintercept = as.Date("2023-07-01")) +
         ggplot2::geom_hline(yintercept = hline_v, linetype = "dashed") +
         ggplot2::scale_y_continuous(breaks = c(0,15,20,25,40,60)) +
         ggplot2::ggtitle(glue::glue("Processing Time By {by}"))
 
-    # #hours
-    # l$hours = p + ggplot2::theme_bw() + ggplot2::theme(legend.position = "bottom") +
-    #     scale_color_discrete(name = "Time Until:",
-    #                          labels = labs) +
-    #     scale_x_date("Arrival Date",breaks = seq(as.Date("2020-01-01"), as.Date("2023-10-01"), by = "6 months") ,date_labels = "%Y-%m") +
-    #     geom_vline(xintercept = as.Date("2023-07-01")) +
-    #     geom_hline(yintercept = 15, linetype = "dashed") +
-    #     ggtitle(glue::glue("Processing Time By {by}"))
     days
 }
 
-plot_software <- function(){
-    l = data.table::melt(list_software()$time_series, id.vars = "completed_quarter")
+plot_software <- function(cl){
+    l = data.table::melt(list_software(cl)$time_series, id.vars = "completed_quarter")
     ls = subset(l,
                 variable %in% c("stata","R","python","matlab","ArcGIS_QGIS","fortran","mathematica","julia") &
                 completed_quarter > "2020-01-01")
@@ -205,8 +201,8 @@ plot_software <- function(){
 
 #' share of software used
 #'
-list_software <- function( ){
-    y = clean_list()$iterations
+list_software <- function(clean_list){
+    y = clean_list$iterations
 
     x = y[(completed), .(date_completed, software,ms,round)]
     x[, final := round == max(round), by = ms]
