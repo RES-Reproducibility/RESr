@@ -80,7 +80,7 @@ nazerosum <- function(x,y){
     x + y
 }
 
-clean_list <- function(x,ndays = 60){
+clean_list <- function(x,ndays = 60,journal = "EJ"){
 
     x[, completed_quarter := zoo::as.yearqtr(date_completed)]
     # create some variables
@@ -146,7 +146,7 @@ clean_list <- function(x,ndays = 60){
 
     x[, arrival_date := as.Date(arrival_date)]
 
-    list(iterations = x, papers = xp, iteration_hazard = hazard)
+    list(iterations = x, papers = xp, iteration_hazard = hazard, journal = journal)
 }
 read_replicators <- function(refresh = FALSE){
     if (refresh){
@@ -166,7 +166,7 @@ read_replicators <- function(refresh = FALSE){
 #' @export
 billing <- function(rate = 25, write = FALSE,refresh = FALSE){
     xectj = read_ectj(refresh = refresh)
-    xej = read_list(refresh = refresh)
+    xej = read_ej(refresh = refresh)
 
     xej[  , days_replic := difftime(date_completed, date_assigned, units = "days")]
     xectj[, days_replic := difftime(date_completed, date_assigned, units = "days")]
@@ -329,4 +329,16 @@ billing_table_ej <- function(){
 
 }
 
+billing_table_ectj <- function(){
+    b = billing()
+    t = b$qtr_ectj[, .(
+        Hours = sum(Tot_hours,na.rm = TRUE),
+        Euros = sum(qtr_payment_euros),
+        Replicators = .N,
+        `Hours/Replicator` = mean(Tot_hours,na.rm = TRUE),
+        mean_completed_jobs = mean(completed_jobs),
+        mean_pay = mean(qtr_payment_euros)), by = list(Quarter = completed_quarter)]
+    t
+
+}
 

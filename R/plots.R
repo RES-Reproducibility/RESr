@@ -5,7 +5,7 @@ plot_all <- function(journal = "EJ",refresh = FALSE,write = FALSE){
 
     # load correct data
     li = read_sheet(journal,refresh = refresh)
-    cl = clean_list(li)
+    cl = clean_list(li,journal = journal)
 
     # width and height
     w1 = 8
@@ -234,16 +234,31 @@ list_software <- function(clean_list){
     d = x[, lapply(.SD, mean,na.rm = TRUE), .SDcols = stata:ztree]
     dd = data.table(Proportion = t(d), Software = names(d))
     data.table::setnames(dd, "Proportion.V1", "Proportion")
-    dd = rbind(dd, data.table(Proportion = dd[Proportion < 0.006, sum(Proportion)], Software = "Other"))
-    dd = dd[Proportion >= 0.006]
-    dd = dd[order(Proportion, decreasing = TRUE)]
-    dd = rbind(dd[-which(Software == "Other")], dd[which(Software == "Other")])
+
+    # cutoff other
+    if (clean_list$journal == "EJ") {
+        cutoff = 0.006
+    } else {
+        cutoff = 0.0125
+    }
+
+    others = data.table(Proportion = dd[Proportion < cutoff, sum(Proportion)], Software = "Other")
+    if (others[,Proportion > 0]){
+        dd = rbind(dd, data.table(Proportion = dd[Proportion < cutoff, sum(Proportion)], Software = "Other"))
+        dd = dd[Proportion >= cutoff]
+        dd = dd[order(Proportion, decreasing = TRUE)]
+        dd = rbind(dd[-which(Software == "Other")], dd[which(Software == "Other")])
+    } else {
+        dd = dd[Proportion > 0]
+    }
+
     dd[, Proportion := round(Proportion, 3)]
 
     # time series of software
     ts = x[, lapply(.SD, mean,na.rm = TRUE), by = completed_quarter]
 
     data.table::setcolorder(dd, neworder = c("Software","Proportion"))
+    data.table::setorder(dd, -Proportion)
     list(table = dd, time_series = ts)
 }
 
