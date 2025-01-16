@@ -25,9 +25,12 @@ read_ectj <- function(refresh = FALSE){
         x = data.table(
             googlesheets4::read_sheet(
                 EctJsheet_url(),sheet = "List",skip = 1, range = "List!A2:AD1000000",
-                col_types = "cicccccDcccDDddccccDccDddddddd") %>%
+                col_types = "cicccccDcccDDccccccDccDddddddd") %>%
                 janitor::clean_names()
         )
+        # clean hours fields
+        x[, hours_checker1 := as.numeric(gsub("\\,","\\.",hours_checker1))]
+        x[, hours_checker2 := as.numeric(gsub("\\,","\\.",hours_checker2))]
         x = x[!is.na(ms)]
         saveRDS(x, file = "~/Dropbox/EctJ/EctJ-1-key-documents/Report/current-sheet.Rds")
     } else {
@@ -45,9 +48,12 @@ read_ej <- function(refresh = FALSE){
             # TODO https://googlesheets4.tidyverse.org/reference/cell-specification.html
             googlesheets4::read_sheet(
                 sheet_url(),sheet = "List",skip = 1, range = "List!A2:AE2000",
-                col_types = "ciccccccccDDcccicccDDddccccDccD") %>%
+                col_types = "ciccccccccDDcccicccDDccccccDccD") %>%
                 janitor::clean_names()
         )
+        # clean hours fields
+        x[, hours_checker1 := as.numeric(gsub("\\,","\\.",hours_checker1))]
+        x[, hours_checker2 := as.numeric(gsub("\\,","\\.",hours_checker2))]
         x = x[!is.na(ms)]
         saveRDS(x, file = "~/Dropbox/EJ/EJ-1-key-documents/Report/current-sheet.Rds")
     } else {
